@@ -1,32 +1,35 @@
 mod core;
-use core::downloader;
+use std::process::Command;
 
 #[tokio::main]
 async fn main() {
-    println!("Iniciando Batchkit Manager Universal...\n");
+    println!("🚀 Verificando el Taller Local de Binarios...\n");
 
-    let client = reqwest::Client::new();
-    let dependencias = vec![
-        ("hdl_dump", "ps2homebrew/hdl-dump"),
-        ("pfsshell", "ps2homebrew/pfsshell"),
-        ("cue2pops", "israpps/cue2pops"),
-    ];
+    let herramientas = vec!["hdl_dump", "pfsshell", "cue2pops"];
 
-    // Chequeo de dependencias
-    for (bin, repo) in dependencias {
-        if !downloader::is_binary_installed(bin) {
-            match downloader::download_dependency(&client, repo, bin).await {
-                Ok(_) => {},
-                Err(e) => eprintln!("Error fatal descargando {}: {}", bin, e),
-            }
+    for bin_name in herramientas {
+        let bin_path = core::downloader::get_bin_dir().join(bin_name);
+
+        if bin_path.exists() {
+            println!("--------------------------------------------------");
+            println!("🔧 Testeando: {}", bin_name);
+            
+            // Ejecutamos la herramienta sin argumentos para forzar que escupa su menú de ayuda
+            let output = Command::new(&bin_path)
+                .output() 
+                .expect("Falló la ejecución del binario");
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            // Queremos ver al menos la primera línea del menú de ayuda para confirmar
+            let salida_completa = format!("{}{}", stdout, stderr);
+            let primera_linea = salida_completa.lines().next().unwrap_or("Sin salida");
+            
+            println!("✅ OK! Responde: {}", primera_linea);
         } else {
-            println!("✅ {} ya está instalado.", bin);
+            println!("❌ ERROR: No se encontró el binario en {:?}", bin_path);
         }
     }
-
-    println!("\nTodas las dependencias están listas.");
-    println!("Lanzando la interfaz principal (TUI)...");
-    
-    // Aquí llamarías a la lógica de tus menús (src/tui/menus.rs)
-    // tui::menus::mostrar_menu_principal();
+    println!("--------------------------------------------------");
 }
