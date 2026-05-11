@@ -1,0 +1,63 @@
+name: Compilar y Publicar Dependencias PS2
+
+# Se activa mediante un botón en la pestaña "Actions"
+on:
+  workflow_dispatch: 
+
+jobs:
+  build-tools:
+    name: Compilar Binarios C/C++
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🛠️ Instalar Compiladores en el Servidor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make meson ninja-build mingw-w64
+
+      - name: 💿 Compilar hdl_dump
+        run: |
+          git clone https://github.com/ps2homebrew/hdl-dump.git
+          cd hdl-dump
+          make clean && make
+          cp hdl_dump ../hdl_dump_linux
+          make clean && make CC=x86_64-w64-mingw32-gcc LDFLAGS="-static"
+          cp hdl_dump.exe ../hdl_dump.exe
+          cd ..
+
+      - name: 🗄️ Compilar pfsshell
+        run: |
+          git clone https://github.com/ps2homebrew/pfsshell.git
+          cd pfsshell
+          git submodule update --init
+          meson setup build
+          meson compile -C build
+          cp build/pfsshell ../pfsshell_linux
+          cd ..
+
+      - name: 🎮 Compilar cue2pops
+        run: |
+          git clone https://github.com/israpps/cue2pops.git
+          cd cue2pops
+          gcc *.c -O2 -o ../cue2pops_linux
+          x86_64-w64-mingw32-gcc *.c -O2 -static -o ../cue2pops.exe
+          cd ..
+
+      - name: 📦 Preparar Archivos
+        run: |
+          mkdir release_assets
+          mv hdl_dump_linux release_assets/
+          mv hdl_dump.exe release_assets/
+          mv pfsshell_linux release_assets/
+          mv cue2pops_linux release_assets/
+          mv cue2pops.exe release_assets/
+
+      - name: 🚀 Publicar Dependencias
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dependencias-core
+          name: "Dependencias Core (Binarios Nativos)"
+          body: "Ejecutables compilados automáticamente para ser usados por el Batchkit Manager."
+          files: release_assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

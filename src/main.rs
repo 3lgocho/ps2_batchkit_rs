@@ -1,35 +1,33 @@
 mod core;
-use std::process::Command;
+mod ps2; // Conectamos la carpeta ps2
 
 #[tokio::main]
 async fn main() {
-    println!("🚀 Verificando el Taller Local de Binarios...\n");
+    println!("🚀 Iniciando Batchkit Manager Universal...\n");
 
-    let herramientas = vec!["hdl_dump", "pfsshell", "cue2pops"];
+    // Buscamos nuestro ejecutable local
+    let bin_path = core::downloader::get_bin_dir().join("hdl_dump");
+    let iso_path = "/home/andres/Downloads/ICO (Europe).iso"; // Tu ruta real
 
-    for bin_name in herramientas {
-        let bin_path = core::downloader::get_bin_dir().join(bin_name);
-
-        if bin_path.exists() {
-            println!("--------------------------------------------------");
-            println!("🔧 Testeando: {}", bin_name);
-            
-            // Ejecutamos la herramienta sin argumentos para forzar que escupa su menú de ayuda
-            let output = Command::new(&bin_path)
-                .output() 
-                .expect("Falló la ejecución del binario");
-
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            // Queremos ver al menos la primera línea del menú de ayuda para confirmar
-            let salida_completa = format!("{}{}", stdout, stderr);
-            let primera_linea = salida_completa.lines().next().unwrap_or("Sin salida");
-            
-            println!("✅ OK! Responde: {}", primera_linea);
-        } else {
-            println!("❌ ERROR: No se encontró el binario en {:?}", bin_path);
+    if bin_path.exists() {
+        println!("💿 Analizando ISO con el nuevo Wrapper...");
+        
+        // Llamamos a nuestra función inteligente
+        match ps2::hdl_dump_wrap::obtener_info_iso(iso_path, &bin_path) {
+            Ok(info_juego) => {
+                println!("✅ ¡Éxito! Datos extraídos:");
+                println!("   - ID del Juego:   {}", info_juego.id);
+                println!("   - Nombre Interno: '{}'", info_juego.nombre_interno);
+                println!("   - Tamaño en KB:   {}", info_juego.tamano_kb);
+                
+                // ¡Aquí es donde la programación en Rust brilla!
+                // Ahora puedes usar `info_juego.id` para renombrar particiones automáticamente
+                let nombre_particion = format!("PP.HDL.{}", info_juego.id);
+                println!("   👉 Próxima partición a crear: {}", nombre_particion);
+            },
+            Err(e) => eprintln!("❌ Error al leer ISO: {}", e),
         }
+    } else {
+        eprintln!("❌ No se encontró hdl_dump en bin/");
     }
-    println!("--------------------------------------------------");
 }

@@ -1,0 +1,28 @@
+name: CI (Rust)
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  check-and-test:
+    name: Revisar y Compilar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: 🦀 Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 🧹 Verificar formato del código
+        run: cargo fmt -- --check
+
+      - name: 🏗️ Verificar que compila
+        run: cargo check --verbose
+
+      - name: 🧪 Ejecutar pruebas (si hay)
+        run: cargo test --verbose
